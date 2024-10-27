@@ -9,10 +9,11 @@
 </head>
 <body class="flex flex-col h-full bg-amber-50">
     <div id="navbar-container"></div>
+
     <main class="flex-grow flex items-center justify-center">
         <div class="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
             <h2 class="text-2xl font-bold text-amber-800 mb-6 text-center">Iniciar Sesión</h2>
-            <form>
+            <form id="login-form">
                 <div class="mb-4">
                     <label for="email" class="block text-amber-700 font-medium mb-2">Correo Electrónico</label>
                     <input type="email" id="email" name="email" class="w-full px-3 py-2 border border-amber-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500" required>
@@ -21,6 +22,12 @@
                     <label for="password" class="block text-amber-700 font-medium mb-2">Contraseña</label>
                     <input type="password" id="password" name="password" class="w-full px-3 py-2 border border-amber-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500" required>
                 </div>
+                <div id="error-message" class="mt-5 mb-5 bg-red-100 border border-red-400 text-red-600 text-sm font-medium px-4 py-2 rounded-md hidden flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M20 12a8 8 0 11-16 0 8 8 0 0116 0z" />
+                    </svg>
+                    <span id="error-text"></span> <!-- Mensaje de error -->
+                </div>
                 <button type="submit" class="w-full bg-amber-600 text-amber-50 px-4 py-2 rounded-md hover:bg-amber-700 transition duration-300">Iniciar Sesión</button>
             </form>
             
@@ -28,8 +35,10 @@
                 <p class="text-amber-700">¿No tienes una cuenta?</p>
                 <a href="#" data-page="Registro.html" class="text-amber-600 hover:text-amber-800 font-medium">Regístrate aquí</a>
             </div>
+            
         </div>
     </main>
     <div id="footer-container"></div>
+    <script src="components/login.js"></script>
 </body>
 </html>

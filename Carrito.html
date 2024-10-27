@@ -3,108 +3,251 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panadería Sol y Luna - Carrito</title>
+    <title>Café Sol y Luna - Carrito</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #1E1E2D; /* Fondo oscuro */
+            color: #ffffff; /* Texto blanco */
+        }
+        .card {
+            background-color: #2A2A3B; /* Fondo de las tarjetas */
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+        }
+        .button {
+            background-color: #ff007a; /* Botón color Epic Games */
+        }
+        .button:hover {
+            background-color: #ff4c9b; /* Color al pasar el ratón */
+        }
+        .remove-button {
+            background-color: #c62828; /* Botón de eliminar */
+        }
+        .remove-button:hover {
+            background-color: #e57373; /* Color al pasar el ratón */
+        }
+    </style>
 </head>
-<body class="bg-gray-100">
+<body>
+    <nav class="bg-gray-800 p-4 flex justify-between items-center">
+        <h1 class="text-xl font-bold text-white">Café Sol y Luna</h1>
+        <div class="flex items-center">
+            <span id="username" class="text-white mr-4 hidden">Usuario: <span id="user-name-display"></span></span>
+            <button id="logout-button" class="button text-white px-4 py-2 rounded hidden" onclick="logout()">Cerrar Sesión</button>
+        </div>
+    </nav>
+
     <div class="container mx-auto p-4">
-        <h1 class="text-3xl font-bold mb-6 text-center">Panadería Sol y Luna - Carrito</h1>
+        <h1 class="text-4xl font-bold mb-6 text-center">Café Sol y Luna - Carrito</h1>
         
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="bg-white p-6 rounded-lg shadow-md">
-                <h2 class="text-xl font-bold mb-4">Productos Disponibles</h2>
+            <!-- Lista de productos -->
+            <div class="card p-6 h-96 overflow-y-auto">
+                <h2 class="text-2xl font-bold mb-4">Productos Disponibles</h2>
                 <ul id="product-list" class="space-y-4"></ul>
             </div>
 
-            <div class="bg-white p-6 rounded-lg shadow-md">
-                <h2 class="text-xl font-bold mb-4">Carrito de Compras</h2>
+            <!-- Carrito de compras -->
+            <div class="card p-6 h-96 overflow-y-auto">
+                <h2 class="text-2xl font-bold mb-4">Carrito de Compras</h2>
+                <div id="user-message" class="mb-4 hidden">Bienvenido, <span id="user-name-cart"></span></div>
                 <ul id="cart-list" class="space-y-4 mb-4"></ul>
-                <div id="cart-total" class="font-bold"></div>
+                <div id="cart-summary" class="font-bold mt-4">
+                    <p id="cart-total-before-iva"></p>
+                    <p id="cart-total-with-iva"></p>
+                </div>
             </div>
+            <button id="confirmar-compra" class="button text-white px-4 py-2 rounded mt-4" onclick="generarFactura()">Confirmar Compra y Generar Factura</button>
         </div>
     </div>
 
     <script>
-        let cart = [];
+        const IVA_PERCENTAGE = 0.12;  // 12% de IVA
+        const cart = {}; // Objeto para almacenar productos en el carrito
 
-        // Obtener productos desde productos.php
+        // Manejo de sesión de usuario
+        function init() {
+    const isAuthenticated = localStorage.getItem('isAuthenticated');
+    const username = localStorage.getItem('username');
+
+    if (isAuthenticated && username) {
+        document.getElementById('user-name-display').textContent = username; // Asegúrate de que este ID exista en tu HTML
+        document.getElementById('user-name-cart').textContent = username; // Asegúrate de que este ID exista en tu HTML
+        document.getElementById('username').classList.remove('hidden'); // Asegúrate de que este ID exista en tu HTML
+        document.getElementById('logout-button').classList.remove('hidden'); // Asegúrate de que este ID exista en tu HTML
+        document.getElementById('user-message').classList.remove('hidden'); // Asegúrate de que este ID exista en tu HTML
+    } else {
+        alert('No has iniciado sesión. Por favor inicia sesión.');
+        window.location.href = 'login.html'; // Redirige si no hay sesión
+    }
+}
+
+
+
+// Llama a la función init al cargar la página
+window.onload = init;
+
+
+function logout() {
+    localStorage.removeItem('isAuthenticated');
+    localStorage.removeItem('username');
+    window.location.href = 'login.html'; // Redirige a la página de inicio de sesión
+}
+
+
         async function fetchProducts() {
             try {
-                const response = await fetch('productos.php');
+                const response = await fetch('http://localhost:3000/productos');
+                if (!response.ok) throw new Error("Error al obtener productos");
                 const products = await response.json();
-                
-                if (products.error) {
-                    alert(products.error);
-                } else {
-                    displayProducts(products);
-                }
+                displayProducts(products);
             } catch (error) {
-                console.error("Error al obtener los productos:", error);
+                console.error("Error al obtener productos:", error);
             }
         }
 
-        // Mostrar productos en la página
         function displayProducts(products) {
             const productList = document.getElementById('product-list');
             productList.innerHTML = '';
 
             products.forEach(product => {
-                const listItem = document.createElement('li');
-                listItem.className = 'flex justify-between items-center';
-                listItem.innerHTML = `
-                    <span>${product.nombre} (Disponible: ${product.cantidad})</span>
-                    <input type="number" min="1" max="${product.cantidad}" value="1" id="quantity-${product.id}" class="border rounded w-16 text-center">
-                    <button onclick="addToCart(${product.id}, '${product.nombre}', ${product.cantidad})" class="ml-4 bg-blue-500 text-white px-2 py-1 rounded">Añadir</button>
+                const precio = parseFloat(product.precio);
+                const li = document.createElement('li');
+                li.classList.add('flex', 'justify-between', 'items-center', 'border-b', 'border-gray-600', 'pb-2', 'mb-2');
+                
+                li.innerHTML = `
+                    <div>
+                        <span>${product.nombre} - $${!isNaN(precio) ? precio.toFixed(2) : '0.00'}</span>
+                        <p class="text-sm text-gray-400">Cantidad disponible: ${product.stock}</p>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <input type="number" min="1" max="${product.stock}" value="1" id="cantidad-${product.idproducto}" class="border border-gray-500 bg-gray-700 text-white p-1 w-16 text-center" />
+                        <button class="button text-white px-2 py-1 rounded" onclick="addToCart(${product.idproducto}, '${product.nombre}', ${precio}, ${product.stock})" id="add-btn-${product.idproducto}">Agregar</button>
+                    </div>
                 `;
-                productList.appendChild(listItem);
+                
+                productList.appendChild(li);
             });
         }
 
-        // Añadir producto al carrito
-        function addToCart(id, nombre, maxQuantity) {
-            const quantityInput = document.getElementById(`quantity-${id}`);
-            const quantity = parseInt(quantityInput.value);
-            
-            if (quantity > maxQuantity) {
-                alert(`Solo puedes añadir hasta ${maxQuantity} unidades de este producto`);
-                quantityInput.value = maxQuantity;
+        function addToCart(idproducto, nombre, precio, cantidadDisponible) {
+            const cantidadInput = document.getElementById(`cantidad-${idproducto}`);
+            const cantidadSeleccionada = parseInt(cantidadInput.value);
+
+            // Verifica si el producto ya está en el carrito
+            if (!cart[idproducto]) {
+                cart[idproducto] = { nombre, precio, cantidad: 0, stock: cantidadDisponible };
+            }
+
+            // Verifica si el stock total del producto es suficiente
+            if (cart[idproducto].cantidad + cantidadSeleccionada > cantidadDisponible) {
+                alert(`No puedes agregar más de ${cantidadDisponible} unidades de ${nombre} al carrito.`);
                 return;
             }
 
-            const existingProduct = cart.find(item => item.id === id);
-            if (existingProduct) {
-                existingProduct.quantity += quantity;
-                if (existingProduct.quantity > maxQuantity) {
-                    existingProduct.quantity = maxQuantity;
-                    alert(`Cantidad ajustada al máximo disponible (${maxQuantity})`);
-                }
-            } else {
-                cart.push({ id, nombre, quantity });
+            // Actualiza la cantidad en el carrito
+            cart[idproducto].cantidad += cantidadSeleccionada;
+            updateCartDisplay();
+        }
+
+        function updateCartDisplay() {
+            const cartList = document.getElementById('cart-list');
+            cartList.innerHTML = '';
+            let totalBeforeIVA = 0;
+
+            for (const idproducto in cart) {
+                const item = cart[idproducto];
+                const totalPrecioProducto = item.precio * item.cantidad;
+                totalBeforeIVA += totalPrecioProducto;
+
+                const cartItem = document.createElement('li');
+                cartItem.classList.add('flex', 'justify-between', 'items-center', 'border-b', 'border-gray-600', 'pb-2', 'mb-2');
+                cartItem.innerHTML = `
+                    <span>${item.nombre} - $${totalPrecioProducto.toFixed(2)} (x${item.cantidad})</span>
+                    <div class="flex items-center space-x-2">
+                        <button class="remove-button text-white px-2 py-1 rounded" onclick="removeOneFromCart(${idproducto})">Eliminar 1</button>
+                        <button class="remove-button text-white px-2 py-1 rounded" onclick="removeFromCart(${idproducto})">Eliminar Todo</button>
+                    </div>
+                `;
+                cartList.appendChild(cartItem);
             }
-            renderCart();
+
+            updateCartTotal(totalBeforeIVA);
         }
 
-        // Mostrar carrito
-        function renderCart() {
-            const cartList = document.getElementById("cart-list");
-            const cartTotal = document.getElementById("cart-total");
-            cartList.innerHTML = "";
-            let total = 0;
+        function updateCartTotal(totalBeforeIVA) {
+            const cartTotalBeforeIVAElement = document.getElementById('cart-total-before-iva');
+            const cartTotalWithIVAElement = document.getElementById('cart-total-with-iva');
+            const totalWithIVA = totalBeforeIVA * (1 + IVA_PERCENTAGE);
 
-            cart.forEach(product => {
-                total += product.quantity;
-
-                const li = document.createElement("li");
-                li.className = "flex justify-between items-center";
-                li.innerHTML = `<span>${product.nombre} - Cantidad: ${product.quantity}</span>`;
-                cartList.appendChild(li);
-            });
-
-            cartTotal.textContent = `Total de productos: ${total}`;
+            cartTotalBeforeIVAElement.textContent = `Total antes de IVA: $${totalBeforeIVA.toFixed(2)}`;
+            cartTotalWithIVAElement.textContent = `Total con IVA: $${totalWithIVA.toFixed(2)}`;
         }
 
-        // Cargar productos al inicio
-        document.addEventListener("DOMContentLoaded", fetchProducts);
-    </script>
+        function removeOneFromCart(idproducto) {
+            const item = cart[idproducto];
+
+            if (item.cantidad > 1) {
+                item.cantidad--;
+            } else {
+                delete cart[idproducto];
+            }
+
+            updateCartDisplay();
+        }
+
+        function removeFromCart(idproducto) {
+            delete cart[idproducto];
+            updateCartDisplay();
+        }
+
+        window.onload = function() {
+            init(); // Inicializa sesión y carga de productos
+            fetchProducts(); // Carga los productos disponibles
+        };
+
+        // Función para generar factura
+async function generarFactura() {
+    try {
+        // Prepara los datos de la factura con los productos en el carrito
+        const factura = {
+            usuario: localStorage.getItem('username'),  // Nombre del usuario
+            productos: Object.values(cart),             // Productos del carrito
+            totalConIVA: document.getElementById('cart-total-with-iva').textContent.split('$')[1]
+        };
+
+        // Enviar la solicitud al servidor para generar la factura
+        const response = await fetch('http://localhost:3000/generarFactura', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(factura)
+        });
+
+        if (!response.ok) throw new Error("Error al generar la factura");
+
+        const resultado = await response.json();
+        alert("Factura generada exitosamente: " + resultado.mensaje);
+
+        // Limpiar el carrito después de confirmar la compra
+        limpiarCarrito();
+
+    } catch (error) {
+        console.error("Error al generar la factura:", error);
+        alert("Hubo un error al generar la factura.");
+    }
+}
+
+// Función para limpiar el carrito después de la compra
+function limpiarCarrito() {
+    for (const idproducto in cart) {
+        delete cart[idproducto];
+    }
+    updateCartDisplay();
+}
+
+</script>
 </body>
 </html>

@@ -1,16 +1,33 @@
-// login.js
-document.getElementById('login-form').addEventListener('submit', function(event) {
-    event.preventDefault(); // Evita el envío del formulario
+document.getElementById('login-form').addEventListener('submit', async function(event) {
+    event.preventDefault(); // Evita la recarga de la página
 
-    // Aquí puedes añadir tu lógica para validar el inicio de sesión
+    // Recoger datos del formulario
     const email = document.getElementById('email').value;
     const password = document.getElementById('password').value;
 
-    // Por ejemplo, verificar si el email y la contraseña son correctos
-    if (email === "usuario@example.com" && password === "contraseña123") {
-        // Redirigir a otra página si el inicio de sesión es exitoso
-        window.location.href = "pagina-principal.html"; // Cambia esto a la página deseada
-    } else {
-        alert("Correo o contraseña incorrectos");
+    try {
+        const response = await fetch('http://localhost:3000/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
+        });
+
+        const result = await response.json();
+        console.log(result); // Para verificar la respuesta en la consola
+
+  // Al realizar el inicio de sesión
+  if (result.success) {
+    console.log("Nombre de usuario recibido:", result.username); // Verifica el nombre completo
+    localStorage.setItem('isAuthenticated', 'true');
+    localStorage.setItem('username', result.username); // Guarda el nombre completo
+    window.location.href = '/Carrito.html'; 
+} else {
+            // Mostrar mensaje de error
+            const errorMessage = document.getElementById('error-message');
+            errorMessage.textContent = result.message; // Mensaje del servidor
+            errorMessage.classList.remove('hidden');
+        }
+    } catch (error) {
+        console.error("Error durante el inicio de sesión:", error);
     }
 });
