@@ -1,12 +1,88 @@
-<script src="components/carrito.js"></script>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Factura - Café Sol y Luna</title>
+    <script src="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"></script>
+    <style>
+        body {
+            background-color: #1E1E2D;
+            color: #ffffff;
+        }
+        .card {
+            background-color: #2A2A3B;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center">
+    <div class="container mx-auto p-4">
+        <div class="card p-6 max-w-2xl mx-auto">
+            <h1 class="text-3xl font-bold mb-6 text-center">Factura - Café Sol y Luna</h1>
+            <div id="invoice-content">
+                <!-- Invoice content will be inserted here -->
+            </div>
+            <button onclick="window.print()" class="mt-6 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                Imprimir Factura
+            </button>
+            <button onclick="window.location.href='Carrito.html'" class="mt-6 ml-4 bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">
+                Volver al Carrito
+            </button>
+        </div>
+    </div>
 
-<div id="factura" class="hidden">
-    <h2>Factura</h2>
-    <p><strong>Usuario:</strong> <span id="nombre-usuario"></span></p>
-    <p><strong>Correo:</strong> <span id="correo-usuario"></span></p>
-    <h3>Productos:</h3>
-    <ul id="lista-productos"></ul>
-    <p><strong>Precio Total:</strong> <span id="precio-total"></span></p>
-    <p><strong>IVA:</strong> <span id="iva"></span></p>
-    <p><strong>Precio Total con IVA:</strong> <span id="precio-total-con-iva"></span></p>
-</div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const invoiceData = JSON.parse(localStorage.getItem('currentInvoice'));
+            if (!invoiceData) {
+                document.getElementById('invoice-content').innerHTML = '<p>No se encontró información de factura.</p>';
+                return;
+            }
+
+            const invoiceHtml = `
+                <div class="mb-4">
+                    <p><strong>Número de Factura:</strong> ${invoiceData.numeroFactura}</p>
+                    <p><strong>Fecha:</strong> ${new Date(invoiceData.fecha).toLocaleString()}</p>
+                </div>
+                <div class="mb-4">
+                    <h2 class="text-xl font-semibold mb-2">Datos del Cliente</h2>
+                    <p><strong>Nombre:</strong> ${invoiceData.usuario.nombre} ${invoiceData.usuario.apellido}</p>
+                    <p><strong>Correo:</strong> ${invoiceData.usuario.correo}</p>
+                </div>
+                <div class="mb-4">
+                    <h2 class="text-xl font-semibold mb-2">Productos</h2>
+                    <table class="w-full">
+                        <thead>
+                            <tr>
+                                <th class="text-left">Producto</th>
+                                <th class="text-right">Cantidad</th>
+                                <th class="text-right">Precio</th>
+                                <th class="text-right">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${invoiceData.productos.map(producto => `
+                                <tr>
+                                    <td>${producto.nombre}</td>
+                                    <td class="text-right">${producto.cantidad}</td>
+                                    <td class="text-right">$${producto.precio.toFixed(2)}</td>
+                                    <td class="text-right">$${(producto.precio * producto.cantidad).toFixed(2)}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="mt-4">
+                    <p><strong>Subtotal:</strong> $${invoiceData.subtotal}</p>
+                    <p><strong>IVA (12%):</strong> $${invoiceData.iva}</p>
+                    <p class="text-xl font-bold"><strong>Total:</strong> $${invoiceData.total}</p>
+                </div>
+            `;
+
+            document.getElementById('invoice-content').innerHTML = invoiceHtml;
+        });
+    </script>
+</body>
+</html>

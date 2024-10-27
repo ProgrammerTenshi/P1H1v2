@@ -74,15 +74,12 @@ app.post('/login', async (req, res) => {
         const result = await pool.query('SELECT * FROM usuario WHERE c_electronico = $1 AND contrasena = $2', [email, password]);
 
         if (result.rows.length > 0) {
-            // Usuario encontrado
-            const user = result.rows[0]; // Almacena el usuario encontrado
-            req.session.user = user; // Almacena la información del usuario en la sesión
+            const user = result.rows[0];
+            req.session.user = user;
             
-            // Combina nombre y apellido
-            const fullName = `${user.nombre} ${user.apellido}`; // Asegúrate de que 'apellido' sea la propiedad correcta
-            res.json({ success: true, username: fullName }); // Envía el nombre completo
+            const fullName = `${user.nombre} ${user.apellido}`;
+            res.json({ success: true, username: fullName });
         } else {
-            // Usuario no encontrado o credenciales incorrectas
             res.status(401).json({ success: false, message: "Correo o contraseña incorrectos" });
         }
     } catch (error) {
@@ -120,39 +117,48 @@ app.get('/carrito', isAuthenticated, (req, res) => {
     res.json({ success: true, data: carrito }); // Enviar el carrito al cliente
 });
 
-// Ruta para generar la factura
-app.post('/factura', isAuthenticated, async (req, res) => {
-    const { productos } = req.body; // Espera un array de productos con su precio
-    const user = req.session.user; // Obtiene la información del usuario desde la sesión
-
-    if (!productos || productos.length === 0) {
-        return res.status(400).json({ success: false, message: "No se han proporcionado productos" });
-    }
+// New endpoint for generating invoices
+app.post('/generarFactura', async (req, res) => {
+    const { usuario, productos, totalConIVA } = req.body;
 
     try {
-        // Calcular el precio total y el IVA
-        const precioTotal = productos.reduce((total, producto) => total + producto.precio, 0);
-        const iva = precioTotal * 0.12; // Cambia el porcentaje si es necesario
-        const precioTotalConIva = precioTotal + iva;
+        // Fetch user details from the database
+        const userResult = await pool.query('SELECT * FROM usuario WHERE nombre = $1', [usuario.split(' ')[0]]);
+        
+        if (userResult.rows.length === 0) {
+            return res.status(404).json({ success: false, message: "Usuario no encontrado" });
+        }
 
-        // Aquí puedes guardar la factura en la base de datos si lo deseas
+        const user = userResult.rows[0];
 
-        // Respuesta de la factura
-        res.json({
-            success: true,
-            user: {
+        // Calculate totals
+        const subtotal = productos.reduce((total, producto) => total + (producto.precio * producto.cantidad), 0);
+        const iva = subtotal * 0.12; // 12% IVA
+        const total = subtotal + iva;
+
+        // Generate invoice number (you might want to implement a more sophisticated system)
+        const invoiceNumber = Date.now();
+
+        // Here you would typically save the invoice to the database
+        // For this example, we'll just send back the invoice data
+        const invoice = {
+            numeroFactura: invoiceNumber,
+            fecha: new Date().toISOString(),
+            usuario: {
                 nombre: user.nombre,
                 apellido: user.apellido,
-                correo: user.c_electronico,
+                correo: user.c_electronico
             },
-            productos,
-            precioTotal,
-            iva,
-            precioTotalConIva,
-        });
+            productos: productos,
+            subtotal: subtotal.toFixed(2),
+            iva: iva.toFixed(2),
+            total: total.toFixed(2)
+        };
+
+        res.json({ success: true, invoice: invoice });
     } catch (error) {
         console.error('Error al generar la factura:', error);
-        res.status(500).json({ success: false, message: "Error en el servidor" });
+        res.status(500).json({ success: false, message: "Error al generar la factura" });
     }
 });
 

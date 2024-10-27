@@ -68,26 +68,26 @@
 
         // Manejo de sesión de usuario
         function init() {
-    const isAuthenticated = localStorage.getItem('isAuthenticated');
-    const username = localStorage.getItem('username');
+            const isAuthenticated = localStorage.getItem('isAuthenticated');
+            const username = localStorage.getItem('username');
 
-    if (isAuthenticated && username) {
-        document.getElementById('user-name-display').textContent = username; // Asegúrate de que este ID exista en tu HTML
-        document.getElementById('user-name-cart').textContent = username; // Asegúrate de que este ID exista en tu HTML
-        document.getElementById('username').classList.remove('hidden'); // Asegúrate de que este ID exista en tu HTML
-        document.getElementById('logout-button').classList.remove('hidden'); // Asegúrate de que este ID exista en tu HTML
-        document.getElementById('user-message').classList.remove('hidden'); // Asegúrate de que este ID exista en tu HTML
-    } else {
-        alert('No has iniciado sesión. Por favor inicia sesión.');
-        window.location.href = 'login.html'; // Redirige si no hay sesión
-    }
-}
+            if (isAuthenticated && username) {
+                document.getElementById('user-name-display').textContent = username;
+                document.getElementById('user-name-cart').textContent = username;
+                document.getElementById('username').classList.remove('hidden');
+                document.getElementById('logout-button').classList.remove('hidden');
+                document.getElementById('user-message').classList.remove('hidden');
+            } else {
+                alert('No has iniciado sesión. Por favor inicia sesión.');
+                window.location.href = 'login.html';
+            }
+        }
 
-
-
-// Llama a la función init al cargar la página
-window.onload = init;
-
+        // Call init function when the page loads
+        window.onload = function() {
+            init();
+            fetchProducts();
+        };
 
 function logout() {
     localStorage.removeItem('isAuthenticated');

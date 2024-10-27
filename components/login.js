@@ -1,7 +1,6 @@
 document.getElementById('login-form').addEventListener('submit', async function(event) {
-    event.preventDefault(); // Evita la recarga de la página
+    event.preventDefault();
 
-    // Recoger datos del formulario
     const email = document.getElementById('email').value;
     const password = document.getElementById('password').value;
 
@@ -13,18 +12,16 @@ document.getElementById('login-form').addEventListener('submit', async function(
         });
 
         const result = await response.json();
-        console.log(result); // Para verificar la respuesta en la consola
+        console.log(result); // For debugging
 
-  // Al realizar el inicio de sesión
-  if (result.success) {
-    console.log("Nombre de usuario recibido:", result.username); // Verifica el nombre completo
-    localStorage.setItem('isAuthenticated', 'true');
-    localStorage.setItem('username', result.username); // Guarda el nombre completo
-    window.location.href = '/Carrito.html'; 
-} else {
-            // Mostrar mensaje de error
+        if (result.success) {
+            console.log("Nombre de usuario recibido:", result.username);
+            localStorage.setItem('isAuthenticated', 'true');
+            localStorage.setItem('username', result.username);
+            window.location.href = '/Carrito.html';
+        } else {
             const errorMessage = document.getElementById('error-message');
-            errorMessage.textContent = result.message; // Mensaje del servidor
+            errorMessage.textContent = result.message;
             errorMessage.classList.remove('hidden');
         }
     } catch (error) {
