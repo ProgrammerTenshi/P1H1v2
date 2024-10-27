@@ -2,7 +2,6 @@ const express = require('express');
 const { Pool } = require('pg');
 const cors = require('cors');
 const session = require('express-session');
-import express from 'express'
 
 const app = express();
 const port = 3000;
