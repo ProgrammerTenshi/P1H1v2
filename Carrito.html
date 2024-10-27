@@ -58,8 +58,10 @@
                     <p id="cart-total-with-iva"></p>
                 </div>
             </div>
-            <button id="confirmar-compra" class="button text-white px-4 py-2 rounded mt-4" onclick="generarFactura()">Confirmar Compra y Generar Factura</button>
+
         </div>
+        <button id="generar-factura" class="button text-white px-4 py-2 rounded mt-4" onclick="generarFactura()">Confirmar Compra y Generar Factura</button>
+
     </div>
 
     <script>
@@ -131,22 +133,20 @@ function logout() {
             });
         }
 
+        // Update the addToCart function to include idproducto
         function addToCart(idproducto, nombre, precio, cantidadDisponible) {
             const cantidadInput = document.getElementById(`cantidad-${idproducto}`);
             const cantidadSeleccionada = parseInt(cantidadInput.value);
 
-            // Verifica si el producto ya está en el carrito
             if (!cart[idproducto]) {
-                cart[idproducto] = { nombre, precio, cantidad: 0, stock: cantidadDisponible };
+                cart[idproducto] = { idproducto, nombre, precio, cantidad: 0, stock: cantidadDisponible };
             }
 
-            // Verifica si el stock total del producto es suficiente
             if (cart[idproducto].cantidad + cantidadSeleccionada > cantidadDisponible) {
                 alert(`No puedes agregar más de ${cantidadDisponible} unidades de ${nombre} al carrito.`);
                 return;
             }
 
-            // Actualiza la cantidad en el carrito
             cart[idproducto].cantidad += cantidadSeleccionada;
             updateCartDisplay();
         }
@@ -207,38 +207,50 @@ function logout() {
             fetchProducts(); // Carga los productos disponibles
         };
 
-        // Función para generar factura
-async function generarFactura() {
-    try {
-        // Prepara los datos de la factura con los productos en el carrito
-        const factura = {
-            usuario: localStorage.getItem('username'),  // Nombre del usuario
-            productos: Object.values(cart),             // Productos del carrito
-            totalConIVA: document.getElementById('cart-total-with-iva').textContent.split('$')[1]
-        };
+        // Update the generarFactura function
+        async function generarFactura() {
+            const username = localStorage.getItem('username');
+            if (!username) {
+                alert('Por favor, inicia sesión para generar una factura.');
+                return;
+            }
 
-        // Enviar la solicitud al servidor para generar la factura
-        const response = await fetch('http://localhost:3000/generarFactura', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(factura)
-        });
+            const productos = Object.values(cart).map(item => ({
+                idproducto: item.idproducto,
+                nombre: item.nombre,
+                cantidad: item.cantidad,
+                precio: item.precio
+            }));
+            const totalConIVA = document.getElementById('cart-total-with-iva').textContent.split('$')[1];
 
-        if (!response.ok) throw new Error("Error al generar la factura");
+            try {
+                const response = await fetch('http://localhost:3000/generarFactura', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ usuario: username, productos, totalConIVA })
+                });
 
-        const resultado = await response.json();
-        alert("Factura generada exitosamente: " + resultado.mensaje);
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || 'Error al generar la factura');
+                }
 
-        // Limpiar el carrito después de confirmar la compra
-        limpiarCarrito();
+                const result = await response.json();
+                if (result.success) {
+                    localStorage.setItem('currentInvoice', JSON.stringify(result.invoice));
+                    window.location.href = 'Factura.html';
+                } else {
+                    alert('Error al generar la factura: ' + result.message);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Ocurrió un error al generar la factura: ' + error.message);
+            }
+        }
 
-    } catch (error) {
-        console.error("Error al generar la factura:", error);
-        alert("Hubo un error al generar la factura.");
-    }
-}
+
 
 // Función para limpiar el carrito después de la compra
 function limpiarCarrito() {

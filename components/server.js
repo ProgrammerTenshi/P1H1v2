@@ -17,19 +17,14 @@ const pool = new Pool({
     port: 5432,
 });
 
-// Middleware para permitir CORS
+// Middleware
 app.use(cors());
-
-// Middleware para parsear el cuerpo de las solicitudes
 app.use(express.json());
-
-
-// Configura la sesión
 app.use(session({
-    secret: 'tu_clave_secreta', // Cambia esto por una clave secreta real
+    secret: 'tu_clave_secreta',
     resave: false,
     saveUninitialized: true,
-    cookie: { secure: false } // Cambia a true si usas HTTPS
+    cookie: { secure: false }
 }));
 
     // app.get('/usuario', async (req, res) => {
@@ -117,16 +112,20 @@ app.get('/carrito', isAuthenticated, (req, res) => {
     res.json({ success: true, data: carrito }); // Enviar el carrito al cliente
 });
 
-// New endpoint for generating invoices
+// Updated endpoint for generating invoices
 app.post('/generarFactura', async (req, res) => {
     const { usuario, productos, totalConIVA } = req.body;
 
+    const client = await pool.connect();
+
     try {
+        await client.query('BEGIN');
+
         // Fetch user details from the database
-        const userResult = await pool.query('SELECT * FROM usuario WHERE nombre = $1', [usuario.split(' ')[0]]);
+        const userResult = await client.query('SELECT * FROM usuario WHERE nombre = $1', [usuario.split(' ')[0]]);
         
         if (userResult.rows.length === 0) {
-            return res.status(404).json({ success: false, message: "Usuario no encontrado" });
+            throw new Error("Usuario no encontrado");
         }
 
         const user = userResult.rows[0];
@@ -136,18 +135,53 @@ app.post('/generarFactura', async (req, res) => {
         const iva = subtotal * 0.12; // 12% IVA
         const total = subtotal + iva;
 
-        // Generate invoice number (you might want to implement a more sophisticated system)
+        // Generate invoice number
         const invoiceNumber = Date.now();
 
-        // Here you would typically save the invoice to the database
-        // For this example, we'll just send back the invoice data
+        // Insert invoice into the database
+        const insertInvoiceQuery = `
+            INSERT INTO facturas (numero_factura, fecha, idusuario, subtotal, iva, total)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            RETURNING idfacturas
+        `;
+        const invoiceResult = await client.query(insertInvoiceQuery, [
+            invoiceNumber,
+            new Date(),
+            user.idusuario,
+            subtotal,
+            iva,
+            total
+        ]);
+
+        const facturaId = invoiceResult.rows[0].idfacturas;
+
+        // Insert invoice details and update product quantities
+        for (const producto of productos) {
+            // Insert invoice detail
+            const insertDetailQuery = `
+                INSERT INTO detalle_factura (idfacturas, idproducto, cantidad, precio_unitario)
+                VALUES ($1, $2, $3, $4)
+            `;
+            await client.query(insertDetailQuery, [facturaId, producto.idproducto, producto.cantidad, producto.precio]);
+
+            // Update product quantity
+            const updateProductQuery = `
+                UPDATE productos
+                SET stock = stock - $1
+                WHERE idproducto = $2
+            `;
+            await client.query(updateProductQuery, [producto.cantidad, producto.idproducto]);
+        }
+
+        await client.query('COMMIT');
+
         const invoice = {
             numeroFactura: invoiceNumber,
             fecha: new Date().toISOString(),
             usuario: {
                 nombre: user.nombre,
                 apellido: user.apellido,
-                correo: user.c_electronico
+                c_electronico: user.c_electronico
             },
             productos: productos,
             subtotal: subtotal.toFixed(2),
@@ -157,10 +191,14 @@ app.post('/generarFactura', async (req, res) => {
 
         res.json({ success: true, invoice: invoice });
     } catch (error) {
+        await client.query('ROLLBACK');
         console.error('Error al generar la factura:', error);
-        res.status(500).json({ success: false, message: "Error al generar la factura" });
+        res.status(500).json({ success: false, message: error.message || "Error al generar la factura" });
+    } finally {
+        client.release();
     }
 });
+
 
 
 // Inicia el servidor en el puerto 3000
